@@ -78,16 +78,14 @@ def query(prompt: str) -> None:
 
 
 def handle(args: list[str]) -> None:
-    """Usage: gpt --token YOUR_KEY | gpt "prompt" """
+    # gpt --token YOUR_KEY | gpt "prompt"
     if not args:
-        print("Usage:")
-        print("  gpt --token YOUR_KEY")
-        print('  gpt "your prompt here"')
+        print("invalid command: gpt [--token <your_key> | <prompt>]")
         return
 
     if args[0] == "--token":
         if len(args) < 2:
-            print("Usage: gpt --token YOUR_KEY")
+            print("invalid command: gpt --token <your_key>")
             return
         set_token(args[1])
         return
