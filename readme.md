@@ -5,9 +5,8 @@ A minimal custom commands for your terminal using python
 as per now there are only two commands
 
 <div align="center">
-  <img src="screenshot.png" alt="screenshot" width="600" height="250">
+  <img src="./public/screenshot.png" alt="screenshot" width="600" height="250">
 </div>
-
 
 
 - **`cf`**: opens random codeforces question in ur browser.
