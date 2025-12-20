@@ -7,7 +7,7 @@ from typing import List
 
 
 INSTALL_DIR = os.path.expanduser("~/bin")
-COMMAND_NAMES = ["cf", "gpt"]
+COMMAND_NAMES = ["cf", "gpt", "ss"]
 
 def _launcher_script(command_name: str) -> str:
     python = sys.executable          # <— use the python that runs devcli.py
@@ -61,6 +61,7 @@ def dispatch(argv: List[str]) -> None:
         print("  python devcli.py status        # show status")
         print("  python devcli.py cf [random]")
         print('  python devcli.py gpt "prompt"')
+        print('  python devcli.py ss [filename] # take a screenshot and save it to the downloads/screenshots directory')
         return
 
     cmd = argv[0]
@@ -88,6 +89,12 @@ def dispatch(argv: List[str]) -> None:
         from commands.gpt import handle as gpt_handle
 
         gpt_handle(args)
+        return
+
+    if cmd == "ss":
+        from commands.ss import handle as ss_handle
+
+        ss_handle(args)
         return
 
     print(f"Unknown command: {cmd}")

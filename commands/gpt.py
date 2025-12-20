@@ -8,10 +8,8 @@ import requests
 CONFIG_DIR = os.path.expanduser("~/.config/zsh-lab")
 CONFIG_PATH = os.path.join(CONFIG_DIR, "config.json")
 
-
 def _ensure_config_dir() -> None:
     os.makedirs(CONFIG_DIR, exist_ok=True)
-
 
 def load_config() -> Dict[str, Any]:
     if not os.path.exists(CONFIG_PATH):

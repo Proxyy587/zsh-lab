@@ -4,8 +4,15 @@ A minimal custom commands for your terminal using python
 
 as per now there are only two commands
 
+<div align="center">
+  <img src="screenshot.png" alt="screenshot" width="600" height="250">
+</div>
+
+
+
 - **`cf`**: opens random codeforces question in ur browser.
 - **`gpt`**: tiny cli based gpt.
+- **`ss`**: screenshot using terminal
 
 you can install, uninstall and check status everything using one script.
 
@@ -17,9 +24,6 @@ you can install, uninstall and check status everything using one script.
 - **Python 3.8+**
 - **git**
 - **OpenAI API key** (for GPT command)
-
-_All commands use a local virtual environment (venv), so your system Python is untouched._
-
 ---
 
 ## Installation
@@ -41,7 +45,7 @@ source .venv/bin/activate
 ### 3. Install Python dependencies
 
 ```bash
-pip install requests
+pip install -r requirements.txt
 ```
 as per now its only using requests. I will update this if we use more packages
 
@@ -117,8 +121,7 @@ python devcli.py install
 
 ## How it Works
 
-- **`commands/cf.py`** — Fetches and opens random Codeforces problems.
-- **`commands/gpt.py`** — Manages API keys and talks to OpenAI.
+- **`commands/{cmdname}.py`** — All the available cmds.
 - **`devcli.py`** — Installs, uninstalls, status checks, and dispatches calls to the other scripts.
 
 When you install, small launcher scripts (`cf`, `gpt`) get created in `~/bin`. These always call into your current repo and Python venv (no global Python requirement). You almost never have to reinstall unless you move the directory or break launcher symlinks.
