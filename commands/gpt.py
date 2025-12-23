@@ -1,8 +1,7 @@
 import json
 import os
-from typing import Any, Dict, List
-
 import requests
+from typing import Any, Dict, List
 
 CONFIG_DIR = os.path.expanduser("~/.config/zsh-lab")
 CONFIG_PATH = os.path.join(CONFIG_DIR, "config.json")
@@ -12,7 +11,8 @@ AVAILABLE_MODELS = [
     "gpt-4",
     "gpt-4-turbo",
     "gpt-4o",
-    "gpt-4o-mini"
+    "gpt-4o-mini",
+    "gpt-4.1"
 ]
 DEFAULT_MODEL = "gpt-4o-mini"
 
@@ -67,7 +67,6 @@ def list_models() -> None:
 def query(prompt: str, model: str = None) -> None:
     config = load_config()
     token = config.get("gpt_token")
-
     if not token:
         print("Token not set. Please set it using: gpt --token YOUR_KEY")
         return
@@ -85,66 +84,74 @@ def query(prompt: str, model: str = None) -> None:
 
     data: Dict[str, Any] = {
         "model": model,
-        "messages": [
-            {"role": "user", "content": prompt},
-        ],
+        "input": prompt
     }
 
+    url = "https://api.openai.com/v1/responses"
     try:
-        res = requests.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers=headers,
-            json=data,
-            timeout=30,
-        )
+        res = requests.post(url, headers=headers, json=data, timeout=60)
         res.raise_for_status()
         payload = res.json()
-        choices: List[Dict[str, Any]] = payload.get("choices", [])
-        if not choices:
+        # Handle streamed or non-streamed as non-stream only now
+        if payload.get('status') == 'error' or payload.get("error"):
+            print("API Error:", payload.get("error") or payload)
+            return
+        # print output text only (output type is a list of dicts, type=='message', content=[ ... ])
+        output = payload.get("output")
+        if not output:
             print("No response from model.")
             return
-        print(choices[0]["message"]["content"])
-    except requests.RequestException as e:
-        print(f"Request error: {e}")
+        for o in output:
+            if o["type"] == "message":
+                for seg in o.get("content", []):
+                    if seg["type"] == "output_text":
+                        print(seg["text"])
+        # optionally also print usage and reasoning
+        if payload.get("reasoning"):
+            print("\n[reasoning]:", json.dumps(payload["reasoning"], indent=2, ensure_ascii=False))
+        if payload.get("usage"):
+            print("\n[usage]:", payload["usage"])
+    except requests.HTTPError as e:
+        if e.response is not None and e.response.status_code == 429:
+            print("Too Many Requests (429) - You have hit a rate limit. Please try again later.")
+        else:
+            print(f"Request error: {e}")
     except Exception as e:
         print(f"Unexpected error: {e}")
 
 def handle(args: list[str]) -> None:
-    # gpt --token YOUR_KEY | gpt --set-model model | gpt --list-models | gpt [--model model] "prompt"
     if not args:
         print("invalid command: gpt [--token <your_key> | --set-model <model> | --list-models | [--model <model>] <prompt>]")
-        return
-
-    if args[0] == "--token":
-        if len(args) < 2:
-            print("invalid command: gpt --token <your_key>")
-            return
-        set_token(args[1])
-        return
-
-    if args[0] == "--list-models" or args[0] == "-l":
-        list_models()
-        return
-
-    if args[0] == "--set-model" or args[0] == "-s":
-        if len(args) < 2:
-            print("invalid command: gpt --set-model <model>")
-            return
-        set_model(args[1])
         return
 
     model = None
     prompt_args = []
     idx = 0
     while idx < len(args):
-        if args[idx] == "--model":
-            if idx+1 >= len(args):
+        arg = args[idx]
+        if arg == "--token":
+            if idx + 1 >= len(args):
+                print("invalid command: gpt --token <your_key>")
+                return
+            set_token(args[idx + 1])
+            return
+        elif arg in ("--list-models", "-l"):
+            list_models()
+            return
+        elif arg in ("--set-model", "-s"):
+            if idx + 1 >= len(args):
+                print("invalid command: gpt --set-model <model>")
+                return
+            set_model(args[idx + 1])
+            return
+        elif arg == "--model":
+            if idx + 1 >= len(args):
                 print("invalid command: gpt --model <model> <prompt>")
                 return
-            model = args[idx+1]
+            model = args[idx + 1]
             idx += 2
         else:
-            prompt_args.append(args[idx])
+            prompt_args.append(arg)
             idx += 1
 
     if not prompt_args:
@@ -152,7 +159,4 @@ def handle(args: list[str]) -> None:
         return
 
     prompt = " ".join(prompt_args)
-    if model:
-        query(prompt, model)
-    else:
-        query(prompt)
+    query(prompt, model)
