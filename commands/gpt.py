@@ -4,9 +4,17 @@ from typing import Any, Dict, List
 
 import requests
 
-
 CONFIG_DIR = os.path.expanduser("~/.config/zsh-lab")
 CONFIG_PATH = os.path.join(CONFIG_DIR, "config.json")
+
+AVAILABLE_MODELS = [
+    "gpt-3.5-turbo",
+    "gpt-4",
+    "gpt-4-turbo",
+    "gpt-4o",
+    "gpt-4o-mini"
+]
+DEFAULT_MODEL = "gpt-4o-mini"
 
 def _ensure_config_dir() -> None:
     os.makedirs(CONFIG_DIR, exist_ok=True)
@@ -20,12 +28,10 @@ def load_config() -> Dict[str, Any]:
     except Exception:
         return {}
 
-
 def save_config(data: Dict[str, Any]) -> None:
     _ensure_config_dir()
     with open(CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
-
 
 def set_token(token: str) -> None:
     config = load_config()
@@ -33,13 +39,43 @@ def set_token(token: str) -> None:
     save_config(config)
     print("GPT token saved.")
 
+def set_model(model: str) -> None:
+    if model not in AVAILABLE_MODELS:
+        print(f"Model '{model}' not recognized.\nRun 'gpt --list-models' to see available models.")
+        return
+    config = load_config()
+    config["gpt_model"] = model
+    save_config(config)
+    print(f"Default model set to '{model}'.")
 
-def query(prompt: str) -> None:
+def get_current_model() -> str:
+    config = load_config()
+    model = config.get("gpt_model", DEFAULT_MODEL)
+    if model not in AVAILABLE_MODELS:
+        return DEFAULT_MODEL
+    return model
+
+def list_models() -> None:
+    current_model = get_current_model()
+    print("Available models:")
+    for m in AVAILABLE_MODELS:
+        marker = ""
+        if m == current_model:
+            marker = " (current default)"
+        print(f"  {m}{marker}")
+
+def query(prompt: str, model: str = None) -> None:
     config = load_config()
     token = config.get("gpt_token")
 
     if not token:
         print("Token not set. Please set it using: gpt --token YOUR_KEY")
+        return
+
+    if model is None:
+        model = get_current_model()
+    elif model not in AVAILABLE_MODELS:
+        print(f"Model '{model}' not recognized. Run 'gpt --list-models' to see available models.")
         return
 
     headers = {
@@ -48,8 +84,7 @@ def query(prompt: str) -> None:
     }
 
     data: Dict[str, Any] = {
-        # TODO: Make this configurable
-        "model": "gpt-4o-mini",
+        "model": model,
         "messages": [
             {"role": "user", "content": prompt},
         ],
@@ -74,11 +109,10 @@ def query(prompt: str) -> None:
     except Exception as e:
         print(f"Unexpected error: {e}")
 
-
 def handle(args: list[str]) -> None:
-    # gpt --token YOUR_KEY | gpt "prompt"
+    # gpt --token YOUR_KEY | gpt --set-model model | gpt --list-models | gpt [--model model] "prompt"
     if not args:
-        print("invalid command: gpt [--token <your_key> | <prompt>]")
+        print("invalid command: gpt [--token <your_key> | --set-model <model> | --list-models | [--model <model>] <prompt>]")
         return
 
     if args[0] == "--token":
@@ -88,5 +122,37 @@ def handle(args: list[str]) -> None:
         set_token(args[1])
         return
 
-    prompt = " ".join(args)
-    query(prompt)
+    if args[0] == "--list-models" or args[0] == "-l":
+        list_models()
+        return
+
+    if args[0] == "--set-model" or args[0] == "-s":
+        if len(args) < 2:
+            print("invalid command: gpt --set-model <model>")
+            return
+        set_model(args[1])
+        return
+
+    model = None
+    prompt_args = []
+    idx = 0
+    while idx < len(args):
+        if args[idx] == "--model":
+            if idx+1 >= len(args):
+                print("invalid command: gpt --model <model> <prompt>")
+                return
+            model = args[idx+1]
+            idx += 2
+        else:
+            prompt_args.append(args[idx])
+            idx += 1
+
+    if not prompt_args:
+        print("No prompt provided.")
+        return
+
+    prompt = " ".join(prompt_args)
+    if model:
+        query(prompt, model)
+    else:
+        query(prompt)
